@@ -11,7 +11,7 @@ import DateTimeSelector from './DateTimeSelector';
 import { useBooking } from '@/hooks/useBooking';
 import { getServiceById } from '@/data/services';
 import { BookingForm as BookingFormData } from '@/types/booking';
-import { MessageCircle, Calendar, Phone, User } from 'lucide-react';
+import { MessageCircle, Calendar, Phone, User, CalendarPlus } from 'lucide-react';
 
 const BookingForm: React.FC = () => {
   const [step, setStep] = useState(1);
@@ -25,7 +25,7 @@ const BookingForm: React.FC = () => {
   });
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
 
-  const { createBooking, generateTimeSlots, generateWhatsAppMessage, generateGoogleCalendarLink } = useBooking();
+  const { createBooking, generateTimeSlots, generateWhatsAppMessage, openGoogleCalendar } = useBooking();
 
   const availableSlots = selectedDate 
     ? generateTimeSlots(selectedDate.toISOString().split('T')[0])
@@ -67,21 +67,20 @@ const BookingForm: React.FC = () => {
     try {
       const booking = createBooking(formData);
       const whatsappMessage = generateWhatsAppMessage(booking);
-      const calendarLink = generateGoogleCalendarLink(booking);
 
       // Abrir WhatsApp
       const phoneNumber = "5511947537240"; // Substitua pelo número do salão
       const whatsappUrl = `https://wa.me/${phoneNumber}?text=${whatsappMessage}`;
       window.open(whatsappUrl, '_blank');
 
-      // Abrir Google Calendar
+      // Abrir Google Calendar após um pequeno delay
       setTimeout(() => {
-        window.open(calendarLink, '_blank');
+        openGoogleCalendar(booking);
       }, 1000);
 
       toast({
         title: "Agendamento criado!",
-        description: "Seu agendamento foi enviado via WhatsApp e adicionado ao Google Calendar.",
+        description: "Seu agendamento foi enviado via WhatsApp e você pode adicionar ao Google Calendar.",
       });
 
       // Reset form
@@ -112,15 +111,19 @@ const BookingForm: React.FC = () => {
       {/* Progress indicator */}
       <div className="flex items-center justify-center space-x-4 mb-8">
         {[1, 2, 3].map((stepNumber) => (
-          <div
-            key={stepNumber}
-            className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-              step >= stepNumber
-                ? 'bg-pink-600 border-pink-600 text-white'
-                : 'border-gray-300 text-gray-400'
-            }`}
-          >
-            {stepNumber}
+          <div key={stepNumber} className="flex items-center">
+            <div
+              className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                step >= stepNumber
+                  ? 'bg-pink-600 border-pink-600 text-white'
+                  : 'border-gray-300 text-gray-400'
+              }`}
+            >
+              {stepNumber}
+            </div>
+            {stepNumber < 3 && (
+              <div className={`w-12 h-0.5 ${step > stepNumber ? 'bg-pink-600' : 'bg-gray-300'}`} />
+            )}
           </div>
         ))}
       </div>
@@ -167,7 +170,7 @@ const BookingForm: React.FC = () => {
 
           {step === 3 && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="clientName" className="flex items-center gap-2">
                     <User className="w-4 h-4" />
@@ -249,6 +252,7 @@ const BookingForm: React.FC = () => {
                 className="bg-pink-600 hover:bg-pink-700"
               >
                 <MessageCircle className="w-4 h-4 mr-2" />
+                <CalendarPlus className="w-4 h-4 mr-2" />
                 Enviar Agendamento
               </Button>
             )}

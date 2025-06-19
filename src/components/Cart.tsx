@@ -1,10 +1,8 @@
-
 import React from 'react';
-import { useCart } from '@/contexts/CartContext';
+import { useCart } from '@/hooks/useCart';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { X, Plus, Minus, ShoppingCart, MessageCircle, FileText } from 'lucide-react';
-import { generateOrderPDF } from '@/utils/pdfGenerator';
+import { X, Plus, Minus, ShoppingCart, MessageCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 // Função auxiliar para formatar valores em Real
@@ -33,7 +31,7 @@ const Cart = () => {
   const handleWhatsAppOrder = () => {
     if (items.length === 0) return;
 
-    let message = "*MEU PEDIDO*\n\n";
+    let message = "Meu Pedido:\n\n";
 
     items.forEach((item, index) => {
       const priceWithDiscount = temDesconto ? item.price * 0.8 : item.price;
@@ -44,59 +42,26 @@ const Cart = () => {
       message += `Quantidade: ${item.quantity}\n`;
 
       if (temDesconto) {
-        message += `Preco unitario: R$ ${item.price.toFixed(2).replace('.', ',')} -> `;
+        message += `Preco unitario: R$ ${formatPrice(item.price)} -> `;
       }
-      message += `Preco unitario: R$ ${priceWithDiscount.toFixed(2).replace('.', ',')}\n`;
-      message += `Subtotal: R$ ${itemSubtotal.toFixed(2).replace('.', ',')}\n`;
-      message += "___________________________\n\n";
+      message += `Preco unitario: R$ ${formatPrice(priceWithDiscount)}\n`;
+      message += `Subtotal: R$ ${formatPrice(itemSubtotal)}\n`;
+      message += "──────────────────────\n";
     });
 
-    message += `*RESUMO DO PEDIDO*\n\n`;
-    message += `Total sem desconto: R$ ${totalOriginal.toFixed(2).replace('.', ',')}\n`;
+    message += `\nTotal sem desconto: ${formatPrice(totalOriginal)}\n`;
 
     if (temDesconto) {
-      message += `*Com desconto (20%): R$ ${totalComDesconto.toFixed(2).replace('.', ',')}*\n\n`;
-      message += "PARABENS! Voce ganhou 20% de desconto por comprar mais de 3 unidades.\n\n";
+      message += `Com desconto (20%): ${formatPrice(totalComDesconto)}\n`;
+      message += "__________________________\n";
+      message += "\nParabens! Voce ganhou 20% de desconto por comprar mais de 3 unidades.\n";
     }
 
-    message += "Gostaria de finalizar este pedido!\nObrigado!";
+    message += "\nGostaria de finalizar este pedido!\nObrigado";
 
     const phoneNumber = "5511947537240";
     const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
-  };
-
-  const handleGeneratePDF = () => {
-    if (items.length === 0) {
-      toast({
-        title: "Carrinho vazio",
-        description: "Adicione produtos ao carrinho para gerar o PDF.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const fileName = generateOrderPDF({
-        items,
-        totalOriginal,
-        totalComDesconto,
-        temDesconto,
-        totalQuantity: totalItems
-      });
-
-      toast({
-        title: "PDF gerado!",
-        description: `O arquivo "${fileName}" foi baixado com sucesso.`,
-      });
-    } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível gerar o PDF. Tente novamente.",
-        variant: "destructive",
-      });
-    }
   };
 
   if (!isOpen) return null;
@@ -109,7 +74,7 @@ const Cart = () => {
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b">
             <div className="flex items-center space-x-2">
-              <ShoppingCart className="h-5 w-5 text-whatsapp-500" />
+              <ShoppingCart className="h-5 w-5 text-green-600" />
               <h2 className="text-lg font-semibold">Carrinho</h2>
               {items.length > 0 && (
                 <Badge variant="secondary" className="inline-flex items-center">
@@ -136,24 +101,22 @@ const Cart = () => {
                     <h3 className="font-medium text-sm line-clamp-2">{item.name}</h3>
                     <p className="text-xs text-gray-500 mb-1">SKU: {item.sku}</p>
                     <p className="text-gray-500 text-sm line-clamp-3 mb-2">{item.description}</p>
-                    
                     <div className="mt-1">
                       {temDesconto ? (
                         <div>
                           <span className="text-gray-500 line-through text-xs">
                             {formatPrice(item.price)}
                           </span>{' '}
-                          <span className="text-whatsapp-600 font-semibold">
+                          <span className="text-green-600 font-semibold">
                             {formatPrice(item.price * 0.8)}
                           </span>
                         </div>
                       ) : (
-                        <span className="text-whatsapp-600 font-semibold">
+                        <span className="text-green-600 font-semibold">
                           {formatPrice(item.price)}
                         </span>
                       )}
                     </div>
-
                     <div className="inline-flex items-center space-x-2 mt-2">
                       <Button
                         variant="outline"
@@ -201,11 +164,10 @@ const Cart = () => {
             <div className="border-t p-4 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-lg font-semibold">Total:</span>
-                <span className="text-2xl font-bold text-whatsapp-600">
+                <span className="text-2xl font-bold text-green-600">
                   {formatPrice(totalComDesconto)}
                 </span>
               </div>
-
               {temDesconto && (
                 <>
                   <div className="flex justify-between text-sm text-gray-600">
@@ -218,25 +180,14 @@ const Cart = () => {
                   </div>
                 </>
               )}
-
               <div className="space-y-2">
                 <Button
                   onClick={handleWhatsAppOrder}
-                  className="w-full bg-whatsapp-500 hover:bg-whatsapp-600 text-white"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
                 >
                   <MessageCircle className="h-4 w-4 mr-2" />
                   Finalizar Pedido no WhatsApp
                 </Button>
-                
-                <Button
-                  onClick={handleGeneratePDF}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Gerar PDF do Pedido
-                </Button>
-                
                 <Button variant="outline" onClick={clearCart} className="w-full">
                   Limpar Carrinho
                 </Button>
