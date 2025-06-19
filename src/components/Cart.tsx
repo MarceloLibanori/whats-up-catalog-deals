@@ -1,141 +1,251 @@
 
-import { CartItem, CartSummary } from '@/types';
+import React from 'react';
+import { useCart } from '@/contexts/CartContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { ShoppingCart, Minus, Plus, Trash2, Send } from 'lucide-react';
+import { X, Plus, Minus, ShoppingCart, MessageCircle, FileText } from 'lucide-react';
+import { generateOrderPDF } from '@/utils/pdfGenerator';
+import { toast } from '@/components/ui/use-toast';
 
-interface CartProps {
-  items: CartItem[];
-  summary: CartSummary;
-  onUpdateQuantity: (productId: string, quantity: number) => void;
-  onRemoveItem: (productId: string) => void;
-  onSendWhatsApp: () => void;
-  onClearCart: () => void;
-}
+// Função auxiliar para formatar valores em Real
+const formatPrice = (price: number): string => {
+  return `R$ ${price.toFixed(2).replace('.', ',')}`;
+};
 
-const Cart = ({ items, summary, onUpdateQuantity, onRemoveItem, onSendWhatsApp, onClearCart }: CartProps) => {
-  if (items.length === 0) {
-    return (
-      <Card className="sticky top-4 bg-gradient-to-br from-gray-50 to-white border-0 shadow-xl">
-        <CardContent className="p-8 text-center">
-          <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-          <p className="text-gray-500 text-lg">Seu carrinho está vazio</p>
-          <p className="text-gray-400 text-sm mt-2">Adicione produtos para começar!</p>
-        </CardContent>
-      </Card>
-    );
-  }
+const Cart = () => {
+  const {
+    items,
+    removeItem,
+    updateQuantity,
+    clearCart,
+    getTotalPrice,
+    getTotalPriceWithDiscount,
+    getTotalQuantity,
+    isOpen,
+    setIsOpen,
+  } = useCart();
+
+  const totalItems = getTotalQuantity();
+  const temDesconto = totalItems >= 3;
+  const totalOriginal = getTotalPrice();
+  const totalComDesconto = temDesconto ? getTotalPriceWithDiscount() : totalOriginal;
+
+  const handleWhatsAppOrder = () => {
+    if (items.length === 0) return;
+
+    let message = "*MEU PEDIDO*\n\n";
+
+    items.forEach((item, index) => {
+      const priceWithDiscount = temDesconto ? item.price * 0.8 : item.price;
+      const itemSubtotal = priceWithDiscount * item.quantity;
+
+      message += `*${index + 1}. ${item.name}*\n`;
+      message += `SKU: ${item.sku}\n`;
+      message += `Quantidade: ${item.quantity}\n`;
+
+      if (temDesconto) {
+        message += `Preco unitario: R$ ${item.price.toFixed(2).replace('.', ',')} -> `;
+      }
+      message += `Preco unitario: R$ ${priceWithDiscount.toFixed(2).replace('.', ',')}\n`;
+      message += `Subtotal: R$ ${itemSubtotal.toFixed(2).replace('.', ',')}\n`;
+      message += "___________________________\n\n";
+    });
+
+    message += `*RESUMO DO PEDIDO*\n\n`;
+    message += `Total sem desconto: R$ ${totalOriginal.toFixed(2).replace('.', ',')}\n`;
+
+    if (temDesconto) {
+      message += `*Com desconto (20%): R$ ${totalComDesconto.toFixed(2).replace('.', ',')}*\n\n`;
+      message += "PARABENS! Voce ganhou 20% de desconto por comprar mais de 3 unidades.\n\n";
+    }
+
+    message += "Gostaria de finalizar este pedido!\nObrigado!";
+
+    const phoneNumber = "5511947537240";
+    const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
+  const handleGeneratePDF = () => {
+    if (items.length === 0) {
+      toast({
+        title: "Carrinho vazio",
+        description: "Adicione produtos ao carrinho para gerar o PDF.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const fileName = generateOrderPDF({
+        items,
+        totalOriginal,
+        totalComDesconto,
+        temDesconto,
+        totalQuantity: totalItems
+      });
+
+      toast({
+        title: "PDF gerado!",
+        description: `O arquivo "${fileName}" foi baixado com sucesso.`,
+      });
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível gerar o PDF. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (!isOpen) return null;
 
   return (
-    <Card className="sticky top-4 bg-gradient-to-br from-white to-gray-50 border-0 shadow-xl">
-      <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
-        <CardTitle className="flex items-center gap-2">
-          <ShoppingCart className="w-5 h-5" />
-          Carrinho ({summary.itemCount} {summary.itemCount === 1 ? 'item' : 'itens'})
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-4 max-h-96 overflow-y-auto">
-        <div className="space-y-4">
-          {items.map((item) => (
-            <div key={item.product.id} className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm border">
-              <img
-                src={item.product.image}
-                alt={item.product.name}
-                className="w-12 h-12 object-cover rounded-md"
-              />
-              <div className="flex-1 min-w-0">
-                <h4 className="font-medium text-sm text-gray-800 truncate">
-                  {item.product.name}
-                </h4>
-                <p className="text-xs text-gray-600">R$ {item.product.price.toFixed(2)}</p>
+    <div className="fixed inset-0 z-50 overflow-hidden">
+      <div className="absolute inset-0 bg-black/50" onClick={() => setIsOpen(false)}></div>
+      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-xl transform transition-transform duration-300 ease-in-out">
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b">
+            <div className="flex items-center space-x-2">
+              <ShoppingCart className="h-5 w-5 text-whatsapp-500" />
+              <h2 className="text-lg font-semibold">Carrinho</h2>
+              {items.length > 0 && (
+                <Badge variant="secondary" className="inline-flex items-center">
+                  {totalItems} {totalItems === 1 ? 'unidade' : 'unidades'}
+                </Badge>
+              )}
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setIsOpen(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Conteúdo do carrinho */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {items.length === 0 ? (
+              <div className="text-center py-8">
+                <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-gray-500">Seu carrinho está vazio</p>
               </div>
-              <div className="flex items-center gap-2">
+            ) : (
+              <div className="space-y-4">
+                {items.map((item) => (
+                  <div key={item.id} className="bg-gray-50 rounded-lg p-3">
+                    <h3 className="font-medium text-sm line-clamp-2">{item.name}</h3>
+                    <p className="text-xs text-gray-500 mb-1">SKU: {item.sku}</p>
+                    <p className="text-gray-500 text-sm line-clamp-3 mb-2">{item.description}</p>
+                    
+                    <div className="mt-1">
+                      {temDesconto ? (
+                        <div>
+                          <span className="text-gray-500 line-through text-xs">
+                            {formatPrice(item.price)}
+                          </span>{' '}
+                          <span className="text-whatsapp-600 font-semibold">
+                            {formatPrice(item.price * 0.8)}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-whatsapp-600 font-semibold">
+                          {formatPrice(item.price)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="inline-flex items-center space-x-2 mt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <span className="inline-flex items-center text-sm font-medium min-w-[2rem] text-center">
+                        {item.quantity}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeItem(item.id)}
+                        className="text-red-500 hover:text-red-700 ml-2"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Mensagem de incentivo ao desconto */}
+                {totalItems > 0 && totalItems < 3 && (
+                  <div className="mt-4 text-sm text-yellow-600">
+                    Compre mais {3 - totalItems} unidade(s) e ganhe 20% de desconto!
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Rodapé com total e botões */}
+          {items.length > 0 && (
+            <div className="border-t p-4 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-semibold">Total:</span>
+                <span className="text-2xl font-bold text-whatsapp-600">
+                  {formatPrice(totalComDesconto)}
+                </span>
+              </div>
+
+              {temDesconto && (
+                <>
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>Subtotal:</span>
+                    <span>{formatPrice(totalOriginal)}</span>
+                  </div>
+                  <div className="flex justify-between text-green-600 font-medium">
+                    <span>Com desconto (20%):</span>
+                    <span>{formatPrice(totalComDesconto)}</span>
+                  </div>
+                </>
+              )}
+
+              <div className="space-y-2">
                 <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
-                  className="w-8 h-8 p-0"
+                  onClick={handleWhatsAppOrder}
+                  className="w-full bg-whatsapp-500 hover:bg-whatsapp-600 text-white"
                 >
-                  <Minus className="w-3 h-3" />
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Finalizar Pedido no WhatsApp
                 </Button>
-                <span className="w-8 text-center font-medium">{item.quantity}</span>
+                
                 <Button
-                  size="sm"
+                  onClick={handleGeneratePDF}
                   variant="outline"
-                  onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
-                  className="w-8 h-8 p-0"
+                  className="w-full"
                 >
-                  <Plus className="w-3 h-3" />
+                  <FileText className="h-4 w-4 mr-2" />
+                  Gerar PDF do Pedido
                 </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => onRemoveItem(item.product.id)}
-                  className="w-8 h-8 p-0 ml-2"
-                >
-                  <Trash2 className="w-3 h-3" />
+                
+                <Button variant="outline" onClick={clearCart} className="w-full">
+                  Limpar Carrinho
                 </Button>
               </div>
             </div>
-          ))}
-        </div>
-        
-        <Separator className="my-4" />
-        
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span>Subtotal:</span>
-            <span>R$ {summary.subtotal.toFixed(2)}</span>
-          </div>
-          
-          {summary.discount > 0 && (
-            <>
-              <div className="flex justify-between text-sm text-green-600">
-                <span>Desconto ({summary.itemCount >= 5 ? '10%' : '5%'}):</span>
-                <span>-R$ {summary.discount.toFixed(2)}</span>
-              </div>
-              {summary.itemCount >= 3 && summary.itemCount < 5 && (
-                <Badge variant="secondary" className="w-full justify-center bg-green-100 text-green-800">
-                  🎉 Mais 2 itens = 10% de desconto!
-                </Badge>
-              )}
-            </>
           )}
-          
-          {summary.itemCount < 3 && (
-            <Badge variant="secondary" className="w-full justify-center bg-blue-100 text-blue-800">
-              Adicione {3 - summary.itemCount} itens para 5% OFF!
-            </Badge>
-          )}
-          
-          <Separator />
-          
-          <div className="flex justify-between font-bold text-lg">
-            <span>Total:</span>
-            <span className="text-green-600">R$ {summary.total.toFixed(2)}</span>
-          </div>
         </div>
-        
-        <div className="space-y-2 mt-4">
-          <Button
-            onClick={onSendWhatsApp}
-            className="w-full bg-green-600 hover:bg-green-700 text-white"
-          >
-            <Send className="w-4 h-4 mr-2" />
-            Enviar pelo WhatsApp
-          </Button>
-          <Button
-            onClick={onClearCart}
-            variant="outline"
-            className="w-full"
-          >
-            Limpar Carrinho
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 
