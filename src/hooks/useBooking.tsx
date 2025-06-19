@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { BookingForm, Booking, TimeSlot } from '@/types/booking';
 import { getServiceById } from '@/data/services';
 import { format } from 'date-fns';
@@ -7,6 +7,23 @@ import { ptBR } from 'date-fns/locale';
 
 export const useBooking = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
+
+  // Carregar agendamentos do localStorage na inicialização
+  useEffect(() => {
+    const savedBookings = localStorage.getItem('salon-bookings');
+    if (savedBookings) {
+      try {
+        setBookings(JSON.parse(savedBookings));
+      } catch (error) {
+        console.error('Erro ao carregar agendamentos:', error);
+      }
+    }
+  }, []);
+
+  // Salvar agendamentos no localStorage sempre que houver mudanças
+  useEffect(() => {
+    localStorage.setItem('salon-bookings', JSON.stringify(bookings));
+  }, [bookings]);
 
   // Horários disponíveis (9h às 18h)
   const generateTimeSlots = useCallback((date: string): TimeSlot[] => {
@@ -50,6 +67,22 @@ export const useBooking = () => {
     return newBooking;
   }, []);
 
+  const updateBookingStatus = useCallback((bookingId: string, status: Booking['status']) => {
+    setBookings(prev => 
+      prev.map(booking => 
+        booking.id === bookingId ? { ...booking, status } : booking
+      )
+    );
+  }, []);
+
+  const cancelBooking = useCallback((bookingId: string) => {
+    updateBookingStatus(bookingId, 'cancelled');
+  }, [updateBookingStatus]);
+
+  const confirmBooking = useCallback((bookingId: string) => {
+    updateBookingStatus(bookingId, 'confirmed');
+  }, [updateBookingStatus]);
+
   const generateWhatsAppMessage = useCallback((booking: Booking) => {
     const formattedDate = format(new Date(booking.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
     
@@ -68,7 +101,7 @@ ${booking.notes ? `*Observacoes:* ${booking.notes}` : ''}
 
 Gostaria de confirmar este agendamento!
 
-Obrigado(a)!`;
+Obrigado!`;
 
     return encodeURIComponent(message);
   }, []);
@@ -92,7 +125,7 @@ Obrigado(a)!`;
     const endFormatted = formatCalendarDate(endDate);
     
     const title = `${booking.service.name} - ${booking.clientName}`;
-    const details = `Cliente: ${booking.clientName}%0ATelefone: ${booking.clientPhone}%0AServico: ${booking.service.name}%0AValor: R$ ${booking.service.price.toFixed(2).replace('.', ',')}${booking.notes ? `%0AObservacoes: ${booking.notes}` : ''}`;
+    const details = `Cliente: ${booking.clientName}\\nTelefone: ${booking.clientPhone}\\nServico: ${booking.service.name}\\nValor: R$ ${booking.service.price.toFixed(2).replace('.', ',')}${booking.notes ? `\\nObservacoes: ${booking.notes}` : ''}`;
     const location = 'Salao Bella - Rua das Flores, 123, Centro - Sao Paulo, SP';
     
     const baseUrl = 'https://calendar.google.com/calendar/render';
@@ -100,7 +133,7 @@ Obrigado(a)!`;
       action: 'TEMPLATE',
       text: title,
       dates: `${startFormatted}/${endFormatted}`,
-      details: details.replace(/%0A/g, '\n'),
+      details: details,
       location: location,
       ctz: 'America/Sao_Paulo'
     });
@@ -113,12 +146,25 @@ Obrigado(a)!`;
     window.open(calendarUrl, '_blank');
   }, [generateGoogleCalendarLink]);
 
+  const getBookingsByDate = useCallback((date: string) => {
+    return bookings.filter(booking => booking.date === date && booking.status !== 'cancelled');
+  }, [bookings]);
+
+  const getBookingsByStatus = useCallback((status: Booking['status']) => {
+    return bookings.filter(booking => booking.status === status);
+  }, [bookings]);
+
   return {
     bookings,
     createBooking,
+    updateBookingStatus,
+    cancelBooking,
+    confirmBooking,
     generateTimeSlots,
     generateWhatsAppMessage,
     generateGoogleCalendarLink,
-    openGoogleCalendar
+    openGoogleCalendar,
+    getBookingsByDate,
+    getBookingsByStatus
   };
 };
