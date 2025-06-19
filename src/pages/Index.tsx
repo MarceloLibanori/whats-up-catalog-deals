@@ -1,153 +1,135 @@
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import ProductCard from '@/components/ProductCard';
-import Cart from '@/components/Cart';
-import { useCart } from '@/hooks/useCart';
-import { products } from '@/data/products';
-import { Search, Filter, ShoppingBag, Star, Gift } from 'lucide-react';
+import BookingForm from '@/components/BookingForm';
+import { Scissors, Sparkles, Heart, Clock, Phone, MapPin } from 'lucide-react';
 
 const Index = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const {
-    cartItems,
-    addToCart,
-    removeFromCart,
-    updateQuantity,
-    clearCart,
-    getCartSummary,
-    generateWhatsAppMessage
-  } = useCart();
-
-  const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))];
-  
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  const handleSendWhatsApp = () => {
-    const message = generateWhatsAppMessage();
-    const whatsappNumber = "5511999999999"; // Substitua pelo seu número
-    const url = `https://wa.me/${whatsappNumber}?text=${message}`;
-    window.open(url, '_blank');
-  };
-
-  const summary = getCartSummary();
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
       {/* Header */}
-      <header className="bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-xl">
-        <div className="container mx-auto px-4 py-8">
+      <header className="bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-xl">
+        <div className="container mx-auto px-4 py-12">
           <div className="text-center">
             <div className="flex items-center justify-center gap-3 mb-4">
-              <ShoppingBag className="w-10 h-10" />
-              <h1 className="text-4xl font-bold">TechStore</h1>
+              <Scissors className="w-12 h-12" />
+              <h1 className="text-5xl font-bold">Salão Bella</h1>
+              <Sparkles className="w-12 h-12" />
             </div>
-            <p className="text-xl text-blue-100">Catálogo Premium de Produtos</p>
-            <div className="flex items-center justify-center gap-4 mt-4">
-              <Badge className="bg-white/20 text-white border-white/30">
-                <Gift className="w-4 h-4 mr-1" />
-                5% OFF em 3+ itens
-              </Badge>
-              <Badge className="bg-white/20 text-white border-white/30">
-                <Star className="w-4 h-4 mr-1" />
-                10% OFF em 5+ itens
-              </Badge>
+            <p className="text-xl text-pink-100 mb-6">
+              Realce sua beleza com nossos serviços especializados
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
+              <div className="flex items-center gap-2">
+                <Scissors className="w-4 h-4" />
+                <span>Cabelo</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                <span>Unhas</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Heart className="w-4 h-4" />
+                <span>Depilação</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                <span>Cílios</span>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-4 gap-8">
-          {/* Sidebar com filtros */}
-          <div className="lg:col-span-1">
-            <Card className="mb-6 bg-gradient-to-br from-white to-gray-50 border-0 shadow-lg">
+      {/* Main content */}
+      <div className="container mx-auto px-4 py-12">
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Informações do salão */}
+          <div className="lg:col-span-1 space-y-6">
+            <Card className="bg-gradient-to-br from-white to-pink-50 border-0 shadow-lg">
               <CardContent className="p-6">
-                <div className="relative mb-4">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    placeholder="Buscar produtos..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 border-0 bg-white shadow-sm"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Filter className="w-4 h-4 text-gray-600" />
-                    <span className="font-medium text-gray-700">Categorias</span>
-                  </div>
-                  {categories.map((category) => (
-                    <Button
-                      key={category}
-                      variant={selectedCategory === category ? "default" : "ghost"}
-                      onClick={() => setSelectedCategory(category)}
-                      className={`w-full justify-start ${
-                        selectedCategory === category 
-                          ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white' 
-                          : 'hover:bg-gray-100'
-                      }`}
-                    >
-                      {category === 'all' ? 'Todos os Produtos' : category}
-                    </Button>
-                  ))}
+                <h3 className="text-xl font-bold text-pink-700 mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  Horário de Funcionamento
+                </h3>
+                <div className="space-y-2 text-gray-600">
+                  <p><strong>Segunda a Sexta:</strong> 9h às 18h</p>
+                  <p><strong>Sábado:</strong> 9h às 17h</p>
+                  <p><strong>Domingo:</strong> Fechado</p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Carrinho */}
-            <Cart
-              items={cartItems}
-              summary={summary}
-              onUpdateQuantity={updateQuantity}
-              onRemoveItem={removeFromCart}
-              onSendWhatsApp={handleSendWhatsApp}
-              onClearCart={clearCart}
-            />
+            <Card className="bg-gradient-to-br from-white to-purple-50 border-0 shadow-lg">
+              <CardContent className="p-6">
+                <h3 className="text-xl font-bold text-purple-700 mb-4 flex items-center gap-2">
+                  <Phone className="w-5 h-5" />
+                  Contato
+                </h3>
+                <div className="space-y-2 text-gray-600">
+                  <p><strong>WhatsApp:</strong> (11) 94753-7240</p>
+                  <p><strong>Instagram:</strong> @salaobella</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-white to-blue-50 border-0 shadow-lg">
+              <CardContent className="p-6">
+                <h3 className="text-xl font-bold text-blue-700 mb-4 flex items-center gap-2">
+                  <MapPin className="w-5 h-5" />
+                  Localização
+                </h3>
+                <div className="space-y-2 text-gray-600">
+                  <p>Rua das Flores, 123</p>
+                  <p>Centro - São Paulo, SP</p>
+                  <p>CEP: 01234-567</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-white to-green-50 border-0 shadow-lg">
+              <CardContent className="p-6">
+                <h3 className="text-xl font-bold text-green-700 mb-4">
+                  Como funciona?
+                </h3>
+                <div className="space-y-3 text-sm text-gray-600">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-green-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">1</div>
+                    <p>Escolha o serviço desejado</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="bg-green-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">2</div>
+                    <p>Selecione data e horário</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="bg-green-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">3</div>
+                    <p>Preencha seus dados</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="bg-green-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">4</div>
+                    <p>Confirme via WhatsApp</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Lista de produtos */}
-          <div className="lg:col-span-3">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                {selectedCategory === 'all' ? 'Todos os Produtos' : selectedCategory}
-              </h2>
-              <p className="text-gray-600">
-                {filteredProducts.length} produto{filteredProducts.length !== 1 ? 's' : ''} encontrado{filteredProducts.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onAddToCart={addToCart}
-                />
-              ))}
-            </div>
-
-            {filteredProducts.length === 0 && (
-              <Card className="p-12 text-center bg-gradient-to-br from-gray-50 to-white border-0 shadow-lg">
-                <Search className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">
-                  Nenhum produto encontrado
-                </h3>
-                <p className="text-gray-500">
-                  Tente ajustar sua busca ou filtros
-                </p>
-              </Card>
-            )}
+          {/* Formulário de agendamento */}
+          <div className="lg:col-span-2">
+            <Card className="bg-white border-0 shadow-xl">
+              <CardContent className="p-8">
+                <div className="text-center mb-8">
+                  <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                    Agende seu horário
+                  </h2>
+                  <p className="text-gray-600">
+                    Escolha o serviço, data e horário que melhor se adequa à sua agenda
+                  </p>
+                </div>
+                
+                <BookingForm />
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
@@ -156,11 +138,12 @@ const Index = () => {
       <footer className="bg-gray-800 text-white py-8 mt-16">
         <div className="container mx-auto px-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <ShoppingBag className="w-6 h-6" />
-            <span className="text-xl font-bold">TechStore</span>
+            <Scissors className="w-6 h-6" />
+            <span className="text-xl font-bold">Salão Bella</span>
+            <Sparkles className="w-6 h-6" />
           </div>
           <p className="text-gray-400">
-            Seu catálogo digital completo • Descontos progressivos • Envio direto via WhatsApp
+            Sua beleza é nossa paixão • Agendamento online via WhatsApp
           </p>
         </div>
       </footer>
