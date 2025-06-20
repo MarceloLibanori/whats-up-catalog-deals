@@ -88,7 +88,7 @@ const AdminLogin: React.FC = () => {
           
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-600 text-center">
-              <strong>Demo:</strong> usuário: admin | senha: admin123
+              <strong>Demo:</strong> usuário: admin | senha: Ma220790ß
             </p>
           </div>
         </CardContent>
