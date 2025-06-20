@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +17,8 @@ import {
   XCircle, 
   MessageCircle,
   ExternalLink,
-  Scissors
+  Scissors,
+  Trash2
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
@@ -25,6 +27,7 @@ const BookingManager: React.FC = () => {
     bookings, 
     confirmBooking, 
     cancelBooking,
+    deleteBooking,
     generateWhatsAppMessage,
     openGoogleCalendar,
     getBookingsByStatus 
@@ -47,6 +50,15 @@ const BookingManager: React.FC = () => {
     toast({
       title: "Agendamento cancelado",
       description: "O agendamento foi cancelado.",
+      variant: "destructive",
+    });
+  };
+
+  const handleDelete = (bookingId: string) => {
+    deleteBooking(bookingId);
+    toast({
+      title: "Agendamento excluído",
+      description: "O agendamento foi excluído permanentemente.",
       variant: "destructive",
     });
   };
@@ -136,6 +148,17 @@ const BookingManager: React.FC = () => {
               </>
             )}
             
+            {booking.status === 'confirmed' && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => handleCancel(booking.id)}
+              >
+                <XCircle className="w-4 h-4 mr-1" />
+                Cancelar
+              </Button>
+            )}
+            
             <Button
               size="sm"
               variant="outline"
@@ -153,6 +176,17 @@ const BookingManager: React.FC = () => {
               <ExternalLink className="w-4 h-4 mr-1" />
               Google Agenda
             </Button>
+
+            {(booking.status === 'confirmed' || booking.status === 'cancelled') && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => handleDelete(booking.id)}
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Excluir
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
@@ -225,7 +259,7 @@ const BookingManager: React.FC = () => {
             <p className="text-center text-gray-500 py-4">Nenhum agendamento cancelado</p>
           ) : (
             cancelledBookings.map(booking => (
-              <BookingCard key={booking.id} booking={booking} showActions={false} />
+              <BookingCard key={booking.id} booking={booking} />
             ))
           )}
         </TabsContent>

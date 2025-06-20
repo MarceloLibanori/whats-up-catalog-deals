@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { BookingForm, Booking, TimeSlot } from '@/types/booking';
 import { getServiceById } from '@/data/services';
@@ -113,6 +112,10 @@ export const useBooking = () => {
     updateBookingStatus(bookingId, 'confirmed');
   }, [updateBookingStatus]);
 
+  const deleteBooking = useCallback((bookingId: string) => {
+    setBookings(prev => prev.filter(booking => booking.id !== bookingId));
+  }, []);
+
   const generateWhatsAppMessage = useCallback((booking: Booking) => {
     const formattedDate = format(new Date(booking.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
     
@@ -194,6 +197,7 @@ Obrigado!`;
     updateBookingStatus,
     cancelBooking,
     confirmBooking,
+    deleteBooking,
     generateTimeSlots,
     generateWhatsAppMessage,
     generateGoogleCalendarLink,
