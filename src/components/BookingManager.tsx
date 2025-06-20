@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +15,8 @@ import {
   CheckCircle, 
   XCircle, 
   MessageCircle,
-  ExternalLink
+  ExternalLink,
+  Scissors
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
@@ -95,6 +95,10 @@ const BookingManager: React.FC = () => {
           <div className="flex items-center gap-2 text-sm">
             <Clock className="w-4 h-4 text-pink-600" />
             <span>{booking.time} ({booking.service.duration} min)</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <Scissors className="w-4 h-4 text-pink-600" />
+            <span><strong>Profissional:</strong> {booking.employee.name}</span>
           </div>
           <div className="text-sm">
             <strong>Serviço:</strong> {booking.service.name}
