@@ -4,9 +4,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import BookingManager from '@/components/BookingManager';
-import { ArrowLeft, Settings, Scissors, Sparkles } from 'lucide-react';
+import AdminLogin from '@/components/AdminLogin';
+import { useAuth } from '@/contexts/AuthContext';
+import { ArrowLeft, Settings, Scissors, Sparkles, LogOut } from 'lucide-react';
 
 const ManageBookings = () => {
+  const { isAdmin, logout } = useAuth();
+
+  if (!isAdmin) {
+    return <AdminLogin />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
       {/* Header */}
@@ -25,10 +33,21 @@ const ManageBookings = () => {
                 <h1 className="text-3xl font-bold">Gerenciar Agendamentos</h1>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Scissors className="w-6 h-6" />
-              <span className="text-lg font-semibold">Salão Bella</span>
-              <Sparkles className="w-6 h-6" />
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Scissors className="w-6 h-6" />
+                <span className="text-lg font-semibold">Salão Bella</span>
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={logout}
+                className="text-white hover:bg-white/20"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
+              </Button>
             </div>
           </div>
           <p className="text-pink-100 mt-2">

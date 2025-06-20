@@ -42,7 +42,7 @@ const Index = () => {
             <Link to="/manage-bookings">
               <Button variant="outline" size="lg" className="bg-white/10 border-white/30 text-white hover:bg-white/20">
                 <Settings className="w-4 h-4 mr-2" />
-                Gerenciar Agendamentos
+                Painel Administrativo
               </Button>
             </Link>
           </div>
