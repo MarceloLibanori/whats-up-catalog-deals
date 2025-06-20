@@ -7,9 +7,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import ServiceSelector from './ServiceSelector';
+import EmployeeSelector from './EmployeeSelector';
 import DateTimeSelector from './DateTimeSelector';
 import { useBooking } from '@/hooks/useBooking';
 import { getServiceById } from '@/data/services';
+import { getEmployeeById } from '@/data/employees';
 import { BookingForm as BookingFormData } from '@/types/booking';
 import { MessageCircle, Calendar, Phone, User, CalendarPlus } from 'lucide-react';
 
@@ -19,6 +21,7 @@ const BookingForm: React.FC = () => {
     clientName: '',
     clientPhone: '',
     serviceId: '',
+    employeeId: '',
     date: '',
     time: '',
     notes: ''
@@ -27,12 +30,28 @@ const BookingForm: React.FC = () => {
 
   const { createBooking, generateTimeSlots, generateWhatsAppMessage, openGoogleCalendar } = useBooking();
 
-  const availableSlots = selectedDate 
-    ? generateTimeSlots(selectedDate.toISOString().split('T')[0])
+  const selectedService = getServiceById(formData.serviceId);
+  const selectedEmployee = getEmployeeById(formData.employeeId);
+
+  const availableSlots = selectedDate && formData.employeeId
+    ? generateTimeSlots(selectedDate.toISOString().split('T')[0], formData.employeeId)
     : [];
 
   const handleServiceSelect = (serviceId: string) => {
-    setFormData(prev => ({ ...prev, serviceId }));
+    setFormData(prev => ({ 
+      ...prev, 
+      serviceId,
+      employeeId: '', // Reset employee when service changes
+      time: '' // Reset time when service changes
+    }));
+  };
+
+  const handleEmployeeSelect = (employeeId: string) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      employeeId,
+      time: '' // Reset time when employee changes
+    }));
   };
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -57,8 +76,9 @@ const BookingForm: React.FC = () => {
   const canProceedToNextStep = () => {
     switch (step) {
       case 1: return formData.serviceId !== '';
-      case 2: return formData.date !== '' && formData.time !== '';
-      case 3: return formData.clientName !== '' && formData.clientPhone !== '';
+      case 2: return formData.employeeId !== '';
+      case 3: return formData.date !== '' && formData.time !== '';
+      case 4: return formData.clientName !== '' && formData.clientPhone !== '';
       default: return false;
     }
   };
@@ -69,7 +89,7 @@ const BookingForm: React.FC = () => {
       const whatsappMessage = generateWhatsAppMessage(booking);
 
       // Abrir WhatsApp
-      const phoneNumber = "5511947537240"; // Substitua pelo número do salão
+      const phoneNumber = "5511947537240";
       const whatsappUrl = `https://wa.me/${phoneNumber}?text=${whatsappMessage}`;
       window.open(whatsappUrl, '_blank');
 
@@ -88,6 +108,7 @@ const BookingForm: React.FC = () => {
         clientName: '',
         clientPhone: '',
         serviceId: '',
+        employeeId: '',
         date: '',
         time: '',
         notes: ''
@@ -104,13 +125,11 @@ const BookingForm: React.FC = () => {
     }
   };
 
-  const selectedService = getServiceById(formData.serviceId);
-
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Progress indicator */}
       <div className="flex items-center justify-center space-x-4 mb-8">
-        {[1, 2, 3].map((stepNumber) => (
+        {[1, 2, 3, 4].map((stepNumber) => (
           <div key={stepNumber} className="flex items-center">
             <div
               className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
@@ -121,7 +140,7 @@ const BookingForm: React.FC = () => {
             >
               {stepNumber}
             </div>
-            {stepNumber < 3 && (
+            {stepNumber < 4 && (
               <div className={`w-12 h-0.5 ${step > stepNumber ? 'bg-pink-600' : 'bg-gray-300'}`} />
             )}
           </div>
@@ -132,8 +151,9 @@ const BookingForm: React.FC = () => {
         <CardHeader>
           <CardTitle className="text-center text-2xl text-pink-700">
             {step === 1 && 'Escolha o Serviço'}
-            {step === 2 && 'Data e Horário'}
-            {step === 3 && 'Seus Dados'}
+            {step === 2 && 'Escolha o Profissional'}
+            {step === 3 && 'Data e Horário'}
+            {step === 4 && 'Seus Dados'}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -144,16 +164,27 @@ const BookingForm: React.FC = () => {
             />
           )}
 
-          {step === 2 && (
+          {step === 2 && selectedService && (
+            <EmployeeSelector
+              selectedService={selectedService}
+              selectedEmployeeId={formData.employeeId}
+              onEmployeeSelect={handleEmployeeSelect}
+            />
+          )}
+
+          {step === 3 && (
             <div className="space-y-4">
-              {selectedService && (
+              {selectedService && selectedEmployee && (
                 <Card className="bg-pink-50 border-pink-200">
                   <CardContent className="p-4">
-                    <h4 className="font-medium text-pink-800">Serviço selecionado:</h4>
-                    <p className="text-pink-700">{selectedService.name}</p>
-                    <p className="text-sm text-pink-600">
-                      {selectedService.duration} min - R$ {selectedService.price.toFixed(2).replace('.', ',')}
-                    </p>
+                    <h4 className="font-medium text-pink-800 mb-2">Seleção atual:</h4>
+                    <div className="space-y-1 text-sm">
+                      <p className="text-pink-700"><strong>Serviço:</strong> {selectedService.name}</p>
+                      <p className="text-pink-700"><strong>Profissional:</strong> {selectedEmployee.name}</p>
+                      <p className="text-pink-600">
+                        {selectedService.duration} min - R$ {selectedService.price.toFixed(2).replace('.', ',')}
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -168,7 +199,7 @@ const BookingForm: React.FC = () => {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -217,6 +248,7 @@ const BookingForm: React.FC = () => {
                   <h4 className="font-medium text-gray-800 mb-2">Resumo do agendamento:</h4>
                   <div className="space-y-1 text-sm text-gray-600">
                     <p><strong>Serviço:</strong> {selectedService?.name}</p>
+                    <p><strong>Profissional:</strong> {selectedEmployee?.name}</p>
                     <p><strong>Data:</strong> {selectedDate?.toLocaleDateString('pt-BR')}</p>
                     <p><strong>Horário:</strong> {formData.time}</p>
                     <p><strong>Duração:</strong> {selectedService?.duration} minutos</p>
@@ -237,7 +269,7 @@ const BookingForm: React.FC = () => {
               Voltar
             </Button>
 
-            {step < 3 ? (
+            {step < 4 ? (
               <Button
                 onClick={() => setStep(step + 1)}
                 disabled={!canProceedToNextStep()}

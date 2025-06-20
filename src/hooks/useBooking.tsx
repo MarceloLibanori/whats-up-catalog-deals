@@ -2,6 +2,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { BookingForm, Booking, TimeSlot } from '@/types/booking';
 import { getServiceById } from '@/data/services';
+import { getEmployeeById } from '@/data/employees';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -25,31 +26,59 @@ export const useBooking = () => {
     localStorage.setItem('salon-bookings', JSON.stringify(bookings));
   }, [bookings]);
 
-  // Horários disponíveis (9h às 18h)
-  const generateTimeSlots = useCallback((date: string): TimeSlot[] => {
-    const slots: TimeSlot[] = [];
-    for (let hour = 9; hour < 18; hour++) {
-      for (let minute of [0, 30]) {
-        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        
-        // Verifica se o horário está ocupado
-        const isBooked = bookings.some(booking => 
-          booking.date === date && booking.time === time && booking.status !== 'cancelled'
-        );
-        
-        slots.push({
-          time,
-          available: !isBooked
-        });
-      }
+  // Gerar horários considerando disponibilidade do funcionário
+  const generateTimeSlots = useCallback((date: string, employeeId: string): TimeSlot[] => {
+    const employee = getEmployeeById(employeeId);
+    if (!employee) return [];
+
+    const selectedDate = new Date(date);
+    const dayOfWeek = selectedDate.getDay();
+
+    // Verificar se o funcionário trabalha neste dia
+    if (!employee.workingDays.includes(dayOfWeek)) {
+      return [];
     }
+
+    const slots: TimeSlot[] = [];
+    const [startHour, startMinute] = employee.workingHours.start.split(':').map(Number);
+    const [endHour, endMinute] = employee.workingHours.end.split(':').map(Number);
+    
+    const startTime = startHour * 60 + startMinute;
+    const endTime = endHour * 60 + endMinute;
+
+    // Gerar slots de 30 em 30 minutos
+    for (let time = startTime; time < endTime; time += 30) {
+      const hour = Math.floor(time / 60);
+      const minute = time % 60;
+      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      
+      // Verificar se o horário está ocupado para este funcionário
+      const isBooked = bookings.some(booking => 
+        booking.date === date && 
+        booking.time === timeString && 
+        booking.employee.id === employeeId &&
+        booking.status !== 'cancelled'
+      );
+      
+      slots.push({
+        time: timeString,
+        available: !isBooked
+      });
+    }
+
     return slots;
   }, [bookings]);
 
   const createBooking = useCallback((bookingData: BookingForm): Booking => {
     const service = getServiceById(bookingData.serviceId);
+    const employee = getEmployeeById(bookingData.employeeId);
+    
     if (!service) {
       throw new Error('Serviço não encontrado');
+    }
+    
+    if (!employee) {
+      throw new Error('Funcionário não encontrado');
     }
 
     const newBooking: Booking = {
@@ -57,6 +86,7 @@ export const useBooking = () => {
       clientName: bookingData.clientName,
       clientPhone: bookingData.clientPhone,
       service,
+      employee,
       date: bookingData.date,
       time: bookingData.time,
       status: 'pending',
@@ -92,6 +122,7 @@ export const useBooking = () => {
 *Telefone:* ${booking.clientPhone}
 
 *Servico:* ${booking.service.name}
+*Profissional:* ${booking.employee.name}
 *Data:* ${formattedDate}
 *Horario:* ${booking.time}
 *Duracao:* ${booking.service.duration} minutos
@@ -114,7 +145,6 @@ Obrigado!`;
     const startDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
     const endDate = new Date(startDate.getTime() + booking.service.duration * 60000);
     
-    // Formatar datas para o Google Calendar (formato: YYYYMMDDTHHMMSSZ)
     const formatCalendarDate = (date: Date) => {
       const pad = (num: number) => num.toString().padStart(2, '0');
       
@@ -125,7 +155,7 @@ Obrigado!`;
     const endFormatted = formatCalendarDate(endDate);
     
     const title = `${booking.service.name} - ${booking.clientName}`;
-    const details = `Cliente: ${booking.clientName}\\nTelefone: ${booking.clientPhone}\\nServico: ${booking.service.name}\\nValor: R$ ${booking.service.price.toFixed(2).replace('.', ',')}${booking.notes ? `\\nObservacoes: ${booking.notes}` : ''}`;
+    const details = `Cliente: ${booking.clientName}\\nTelefone: ${booking.clientPhone}\\nServico: ${booking.service.name}\\nProfissional: ${booking.employee.name}\\nValor: R$ ${booking.service.price.toFixed(2).replace('.', ',')}${booking.notes ? `\\nObservacoes: ${booking.notes}` : ''}`;
     const location = 'Salao Bella - Rua das Flores, 123, Centro - Sao Paulo, SP';
     
     const baseUrl = 'https://calendar.google.com/calendar/render';
@@ -154,6 +184,10 @@ Obrigado!`;
     return bookings.filter(booking => booking.status === status);
   }, [bookings]);
 
+  const getBookingsByEmployee = useCallback((employeeId: string) => {
+    return bookings.filter(booking => booking.employee.id === employeeId && booking.status !== 'cancelled');
+  }, [bookings]);
+
   return {
     bookings,
     createBooking,
@@ -165,6 +199,7 @@ Obrigado!`;
     generateGoogleCalendarLink,
     openGoogleCalendar,
     getBookingsByDate,
-    getBookingsByStatus
+    getBookingsByStatus,
+    getBookingsByEmployee
   };
 };
