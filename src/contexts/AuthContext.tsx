@@ -29,7 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = (username: string, password: string): boolean => {
     // Credenciais simples para demo - em produção usar autenticação segura
-    if (username === 'admin' && password === 'admin123') {
+    if (username === 'admin' && password === 'ma220790') {
       setIsAdmin(true);
       localStorage.setItem('salon-admin-logged-in', 'true');
       return true;
