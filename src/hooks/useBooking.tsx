@@ -9,10 +9,36 @@ import { ptBR } from 'date-fns/locale';
 export const useBooking = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
 
-  // Carregar agendamentos na inicialização
-  useEffect(() => {
+  // Função para atualizar os agendamentos
+  const refreshBookings = useCallback(() => {
     setBookings(getBookings());
   }, []);
+
+  // Carregar agendamentos na inicialização
+  useEffect(() => {
+    refreshBookings();
+  }, [refreshBookings]);
+
+  // Listener para mudanças no localStorage (quando outro usuário faz alterações)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'salon-bookings-data') {
+        refreshBookings();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [refreshBookings]);
+
+  // Atualizar dados a cada 5 segundos para garantir sincronização
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshBookings();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [refreshBookings]);
 
   // Gerar horários considerando disponibilidade do funcionário
   const generateTimeSlots = useCallback((date: string, employeeId: string): TimeSlot[] => {
@@ -40,7 +66,7 @@ export const useBooking = () => {
       const minute = time % 60;
       const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
       
-      // Verificar se o horário está ocupado para este funcionário usando os dados atuais
+      // Verificar se o horário está ocupado para este funcionário usando os dados mais atuais
       const currentBookings = getBookings();
       const isBooked = currentBookings.some(booking => 
         booking.date === date && 
@@ -70,8 +96,21 @@ export const useBooking = () => {
       throw new Error('Funcionário não encontrado');
     }
 
+    // Verificar novamente se o horário ainda está disponível antes de criar
+    const currentBookings = getBookings();
+    const isTimeAvailable = !currentBookings.some(booking => 
+      booking.date === bookingData.date && 
+      booking.time === bookingData.time && 
+      booking.employee.id === bookingData.employeeId &&
+      booking.status !== 'cancelled'
+    );
+
+    if (!isTimeAvailable) {
+      throw new Error('Este horário não está mais disponível. Por favor, escolha outro horário.');
+    }
+
     const newBooking: Booking = {
-      id: Date.now().toString(),
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       clientName: bookingData.clientName,
       clientPhone: bookingData.clientPhone,
       service,
@@ -83,14 +122,14 @@ export const useBooking = () => {
     };
 
     addBooking(newBooking);
-    setBookings(getBookings());
+    refreshBookings();
     return newBooking;
-  }, []);
+  }, [refreshBookings]);
 
   const updateBookingStatus = useCallback((bookingId: string, status: Booking['status']) => {
     updateBooking(bookingId, { status });
-    setBookings(getBookings());
-  }, []);
+    refreshBookings();
+  }, [refreshBookings]);
 
   const cancelBooking = useCallback((bookingId: string) => {
     updateBookingStatus(bookingId, 'cancelled');
@@ -102,8 +141,8 @@ export const useBooking = () => {
 
   const deleteBooking = useCallback((bookingId: string) => {
     removeBooking(bookingId);
-    setBookings(getBookings());
-  }, []);
+    refreshBookings();
+  }, [refreshBookings]);
 
   const generateWhatsAppMessage = useCallback((booking: Booking) => {
     const formattedDate = format(new Date(booking.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
