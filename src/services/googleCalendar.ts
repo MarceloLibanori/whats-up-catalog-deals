@@ -1,7 +1,6 @@
 
 // Configurações do Google Calendar API
 const CALENDAR_ID = 'primary'; // Use o ID do calendário do salão
-const API_KEY = ''; // Será configurado pelo usuário
 
 interface CalendarEvent {
   id: string;
@@ -28,7 +27,7 @@ interface GoogleCalendarService {
     start: string;
     end: string;
     attendeeEmail?: string;
-  }) => Promise<CalendarEvent>;
+  }) => Promise<CalendarEvent | null>;
 }
 
 // Função para carregar a API do Google
@@ -90,13 +89,28 @@ const listEvents = async (date: string, employeeEmail?: string): Promise<Calenda
 
     // Filtrar por funcionário se especificado
     if (employeeEmail) {
-      events = events.filter((event: CalendarEvent) => 
-        event.attendees?.some(attendee => attendee.email === employeeEmail) ||
+      events = events.filter((event: any) => 
+        event.attendees?.some((attendee: any) => attendee.email === employeeEmail) ||
         event.summary?.toLowerCase().includes(employeeEmail.toLowerCase())
       );
     }
 
-    return events;
+    // Converter para o formato esperado
+    const calendarEvents: CalendarEvent[] = events.map((event: any) => ({
+      id: event.id,
+      summary: event.summary || '',
+      start: {
+        dateTime: event.start.dateTime || event.start.date || '',
+        date: event.start.date
+      },
+      end: {
+        dateTime: event.end.dateTime || event.end.date || '',
+        date: event.end.date
+      },
+      attendees: event.attendees || []
+    }));
+
+    return calendarEvents;
   } catch (error) {
     console.error('Error fetching Google Calendar events:', error);
     return [];
@@ -141,7 +155,19 @@ const createEvent = async (eventData: {
       resource: event,
     });
 
-    return response.result;
+    return {
+      id: response.result.id,
+      summary: response.result.summary || '',
+      start: {
+        dateTime: response.result.start.dateTime || response.result.start.date || '',
+        date: response.result.start.date
+      },
+      end: {
+        dateTime: response.result.end.dateTime || response.result.end.date || '',
+        date: response.result.end.date
+      },
+      attendees: response.result.attendees || []
+    };
   } catch (error) {
     console.error('Error creating Google Calendar event:', error);
     return null;

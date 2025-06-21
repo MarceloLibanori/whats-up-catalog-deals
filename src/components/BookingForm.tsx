@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,7 @@ import { useBooking } from '@/hooks/useBooking';
 import { getServiceById } from '@/data/services';
 import { getEmployeeById } from '@/data/employees';
 import { BookingForm as BookingFormData } from '@/types/booking';
+import { TimeSlot } from '@/types/booking';
 import { MessageCircle, Calendar, Phone, User, CalendarPlus } from 'lucide-react';
 
 const BookingForm: React.FC = () => {
@@ -27,15 +28,26 @@ const BookingForm: React.FC = () => {
     notes: ''
   });
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
 
   const { createBooking, generateTimeSlots, generateWhatsAppMessage, openGoogleCalendar } = useBooking();
 
   const selectedService = getServiceById(formData.serviceId);
   const selectedEmployee = getEmployeeById(formData.employeeId);
 
-  const availableSlots = selectedDate && formData.employeeId
-    ? generateTimeSlots(selectedDate.toISOString().split('T')[0], formData.employeeId)
-    : [];
+  // Gerar horários disponíveis quando data ou funcionário mudarem
+  useEffect(() => {
+    const loadAvailableSlots = async () => {
+      if (selectedDate && formData.employeeId) {
+        const slots = await generateTimeSlots(selectedDate.toISOString().split('T')[0], formData.employeeId);
+        setAvailableSlots(slots);
+      } else {
+        setAvailableSlots([]);
+      }
+    };
+
+    loadAvailableSlots();
+  }, [selectedDate, formData.employeeId, generateTimeSlots]);
 
   const handleServiceSelect = (serviceId: string) => {
     setFormData(prev => ({ 
@@ -83,9 +95,9 @@ const BookingForm: React.FC = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     try {
-      const booking = createBooking(formData);
+      const booking = await createBooking(formData);
       const whatsappMessage = generateWhatsAppMessage(booking);
 
       // Abrir WhatsApp
@@ -114,12 +126,13 @@ const BookingForm: React.FC = () => {
         notes: ''
       });
       setSelectedDate(undefined);
+      setAvailableSlots([]);
       setStep(1);
 
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Não foi possível criar o agendamento. Tente novamente.",
+        description: error instanceof Error ? error.message : "Não foi possível criar o agendamento. Tente novamente.",
         variant: "destructive",
       });
     }
