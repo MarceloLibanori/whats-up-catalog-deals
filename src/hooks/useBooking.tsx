@@ -3,6 +3,7 @@ import { BookingForm, Booking, TimeSlot } from '@/types/booking';
 import { getServiceById } from '@/data/services';
 import { getEmployeeById } from '@/data/employees';
 import { getBookings, addBooking, updateBooking, removeBooking, filterBookings } from '@/data/bookings';
+import { googleCalendarService } from '@/services/googleCalendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -40,8 +41,8 @@ export const useBooking = () => {
     return () => clearInterval(interval);
   }, [refreshBookings]);
 
-  // Gerar horários considerando disponibilidade do funcionário
-  const generateTimeSlots = useCallback((date: string, employeeId: string): TimeSlot[] => {
+  // Gerar horários considerando disponibilidade do funcionário e Google Calendar
+  const generateTimeSlots = useCallback(async (date: string, employeeId: string): Promise<TimeSlot[]> => {
     const employee = getEmployeeById(employeeId);
     if (!employee) return [];
 
@@ -60,31 +61,43 @@ export const useBooking = () => {
     const startTime = startHour * 60 + startMinute;
     const endTime = endHour * 60 + endMinute;
 
+    // Buscar eventos do Google Calendar para este funcionário
+    const calendarEvents = await googleCalendarService.listEvents(date, employee.name);
+    
+    // Converter eventos do Google Calendar para horários ocupados
+    const googleBusySlots = calendarEvents.map(event => {
+      const startTime = new Date(event.start.dateTime || event.start.date!);
+      return startTime.toTimeString().substring(0, 5);
+    });
+
     // Gerar slots de 30 em 30 minutos
     for (let time = startTime; time < endTime; time += 30) {
       const hour = Math.floor(time / 60);
       const minute = time % 60;
       const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
       
-      // Verificar se o horário está ocupado para este funcionário usando os dados mais atuais
+      // Verificar se o horário está ocupado no sistema local
       const currentBookings = getBookings();
-      const isBooked = currentBookings.some(booking => 
+      const isLocallyBooked = currentBookings.some(booking => 
         booking.date === date && 
         booking.time === timeString && 
         booking.employee.id === employeeId &&
         booking.status !== 'cancelled'
       );
+
+      // Verificar se o horário está ocupado no Google Calendar
+      const isGoogleBooked = googleBusySlots.includes(timeString);
       
       slots.push({
         time: timeString,
-        available: !isBooked
+        available: !isLocallyBooked && !isGoogleBooked
       });
     }
 
     return slots;
   }, []);
 
-  const createBooking = useCallback((bookingData: BookingForm): Booking => {
+  const createBooking = useCallback(async (bookingData: BookingForm): Promise<Booking> => {
     const service = getServiceById(bookingData.serviceId);
     const employee = getEmployeeById(bookingData.employeeId);
     
@@ -96,17 +109,28 @@ export const useBooking = () => {
       throw new Error('Funcionário não encontrado');
     }
 
-    // Verificar novamente se o horário ainda está disponível antes de criar
+    // Verificar disponibilidade local
     const currentBookings = getBookings();
-    const isTimeAvailable = !currentBookings.some(booking => 
+    const isLocallyAvailable = !currentBookings.some(booking => 
       booking.date === bookingData.date && 
       booking.time === bookingData.time && 
       booking.employee.id === bookingData.employeeId &&
       booking.status !== 'cancelled'
     );
 
-    if (!isTimeAvailable) {
+    if (!isLocallyAvailable) {
       throw new Error('Este horário não está mais disponível. Por favor, escolha outro horário.');
+    }
+
+    // Verificar disponibilidade no Google Calendar
+    const calendarEvents = await googleCalendarService.listEvents(bookingData.date, employee.name);
+    const isGoogleAvailable = !calendarEvents.some(event => {
+      const eventTime = new Date(event.start.dateTime || event.start.date!);
+      return eventTime.toTimeString().substring(0, 5) === bookingData.time;
+    });
+
+    if (!isGoogleAvailable) {
+      throw new Error('Este horário está ocupado no Google Calendar. Por favor, escolha outro horário.');
     }
 
     const newBooking: Booking = {
@@ -120,6 +144,20 @@ export const useBooking = () => {
       status: 'pending',
       notes: bookingData.notes
     };
+
+    // Criar evento no Google Calendar
+    const [year, month, day] = bookingData.date.split('-');
+    const [hour, minute] = bookingData.time.split(':');
+    
+    const startDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
+    const endDate = new Date(startDate.getTime() + service.duration * 60000);
+
+    await googleCalendarService.createEvent({
+      summary: `${service.name} - ${bookingData.clientName}`,
+      description: `Cliente: ${bookingData.clientName}\nTelefone: ${bookingData.clientPhone}\nServiço: ${service.name}\nProfissional: ${employee.name}\nValor: R$ ${service.price.toFixed(2)}${bookingData.notes ? `\nObservações: ${bookingData.notes}` : ''}`,
+      start: startDate.toISOString(),
+      end: endDate.toISOString(),
+    });
 
     addBooking(newBooking);
     refreshBookings();
