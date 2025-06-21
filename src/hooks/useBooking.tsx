@@ -2,28 +2,17 @@ import { useState, useCallback, useEffect } from 'react';
 import { BookingForm, Booking, TimeSlot } from '@/types/booking';
 import { getServiceById } from '@/data/services';
 import { getEmployeeById } from '@/data/employees';
+import { getBookings, addBooking, updateBooking, removeBooking, filterBookings } from '@/data/bookings';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export const useBooking = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
 
-  // Carregar agendamentos do localStorage na inicialização
+  // Carregar agendamentos na inicialização
   useEffect(() => {
-    const savedBookings = localStorage.getItem('salon-bookings');
-    if (savedBookings) {
-      try {
-        setBookings(JSON.parse(savedBookings));
-      } catch (error) {
-        console.error('Erro ao carregar agendamentos:', error);
-      }
-    }
+    setBookings(getBookings());
   }, []);
-
-  // Salvar agendamentos no localStorage sempre que houver mudanças
-  useEffect(() => {
-    localStorage.setItem('salon-bookings', JSON.stringify(bookings));
-  }, [bookings]);
 
   // Gerar horários considerando disponibilidade do funcionário
   const generateTimeSlots = useCallback((date: string, employeeId: string): TimeSlot[] => {
@@ -51,8 +40,9 @@ export const useBooking = () => {
       const minute = time % 60;
       const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
       
-      // Verificar se o horário está ocupado para este funcionário
-      const isBooked = bookings.some(booking => 
+      // Verificar se o horário está ocupado para este funcionário usando os dados atuais
+      const currentBookings = getBookings();
+      const isBooked = currentBookings.some(booking => 
         booking.date === date && 
         booking.time === timeString && 
         booking.employee.id === employeeId &&
@@ -66,7 +56,7 @@ export const useBooking = () => {
     }
 
     return slots;
-  }, [bookings]);
+  }, []);
 
   const createBooking = useCallback((bookingData: BookingForm): Booking => {
     const service = getServiceById(bookingData.serviceId);
@@ -92,16 +82,14 @@ export const useBooking = () => {
       notes: bookingData.notes
     };
 
-    setBookings(prev => [...prev, newBooking]);
+    addBooking(newBooking);
+    setBookings(getBookings());
     return newBooking;
   }, []);
 
   const updateBookingStatus = useCallback((bookingId: string, status: Booking['status']) => {
-    setBookings(prev => 
-      prev.map(booking => 
-        booking.id === bookingId ? { ...booking, status } : booking
-      )
-    );
+    updateBooking(bookingId, { status });
+    setBookings(getBookings());
   }, []);
 
   const cancelBooking = useCallback((bookingId: string) => {
@@ -113,7 +101,8 @@ export const useBooking = () => {
   }, [updateBookingStatus]);
 
   const deleteBooking = useCallback((bookingId: string) => {
-    setBookings(prev => prev.filter(booking => booking.id !== bookingId));
+    removeBooking(bookingId);
+    setBookings(getBookings());
   }, []);
 
   const generateWhatsAppMessage = useCallback((booking: Booking) => {
@@ -180,16 +169,16 @@ Obrigado!`;
   }, [generateGoogleCalendarLink]);
 
   const getBookingsByDate = useCallback((date: string) => {
-    return bookings.filter(booking => booking.date === date && booking.status !== 'cancelled');
-  }, [bookings]);
+    return filterBookings(booking => booking.date === date && booking.status !== 'cancelled');
+  }, []);
 
   const getBookingsByStatus = useCallback((status: Booking['status']) => {
-    return bookings.filter(booking => booking.status === status);
-  }, [bookings]);
+    return filterBookings(booking => booking.status === status);
+  }, []);
 
   const getBookingsByEmployee = useCallback((employeeId: string) => {
-    return bookings.filter(booking => booking.employee.id === employeeId && booking.status !== 'cancelled');
-  }, [bookings]);
+    return filterBookings(booking => booking.employee.id === employeeId && booking.status !== 'cancelled');
+  }, []);
 
   return {
     bookings,
