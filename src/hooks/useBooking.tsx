@@ -41,7 +41,7 @@ export const useBooking = () => {
     return () => clearInterval(interval);
   }, [refreshBookings]);
 
-  // Gerar horários considerando disponibilidade do funcionário e Google Calendar
+  // Gerar horários considerando disponibilidade do funcionário
   const generateTimeSlots = useCallback(async (date: string, employeeId: string): Promise<TimeSlot[]> => {
     const employee = getEmployeeById(employeeId);
     if (!employee) return [];
@@ -61,7 +61,7 @@ export const useBooking = () => {
     const startTime = startHour * 60 + startMinute;
     const endTime = endHour * 60 + endMinute;
 
-    // Buscar eventos do Google Calendar para este funcionário
+    // Buscar eventos do Google Calendar para este funcionário (retorna vazio com API key)
     const calendarEvents = await googleCalendarService.listEvents(date, employee.name);
     
     // Converter eventos do Google Calendar para horários ocupados
@@ -122,17 +122,6 @@ export const useBooking = () => {
       throw new Error('Este horário não está mais disponível. Por favor, escolha outro horário.');
     }
 
-    // Verificar disponibilidade no Google Calendar
-    const calendarEvents = await googleCalendarService.listEvents(bookingData.date, employee.name);
-    const isGoogleAvailable = !calendarEvents.some(event => {
-      const eventTime = new Date(event.start.dateTime || event.start.date!);
-      return eventTime.toTimeString().substring(0, 5) === bookingData.time;
-    });
-
-    if (!isGoogleAvailable) {
-      throw new Error('Este horário está ocupado no Google Calendar. Por favor, escolha outro horário.');
-    }
-
     const newBooking: Booking = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       clientName: bookingData.clientName,
@@ -145,7 +134,7 @@ export const useBooking = () => {
       notes: bookingData.notes
     };
 
-    // Criar evento no Google Calendar
+    // Tentar criar evento no Google Calendar (com API key não funcionará, mas não impedirá o agendamento)
     const [year, month, day] = bookingData.date.split('-');
     const [hour, minute] = bookingData.time.split(':');
     

@@ -1,6 +1,5 @@
 
 // Configurações do Google Calendar API
-const CALENDAR_ID = 'primary'; // Use o ID do calendário do salão
 const GOOGLE_API_KEY = 'AIzaSyBq_pcu_fh2r9gN0M5SIP-ArAoqubAZiPs'; // Sua chave da API
 
 interface CalendarEvent {
@@ -77,55 +76,15 @@ const initializeGoogleCalendar = async (): Promise<void> => {
 };
 
 // Listar eventos do calendário para uma data específica
+// NOTA: Com API key, só conseguimos acessar calendários públicos
 const listEvents = async (date: string, employeeEmail?: string): Promise<CalendarEvent[]> => {
   try {
-    console.log('Buscando eventos do Google Calendar para:', date);
-    await initializeGoogleCalendar();
-
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
+    console.log('Google Calendar: Funcionalidade limitada com API key - retornando lista vazia');
+    console.log('Para integração completa, seria necessário OAuth2 authentication');
     
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    console.log('Fazendo requisição para Google Calendar...');
-    const response = await window.gapi.client.calendar.events.list({
-      calendarId: CALENDAR_ID,
-      timeMin: startOfDay.toISOString(),
-      timeMax: endOfDay.toISOString(),
-      singleEvents: true,
-      orderBy: 'startTime',
-    });
-
-    console.log('Resposta do Google Calendar:', response);
-    let events = response.result.items || [];
-
-    // Filtrar por funcionário se especificado
-    if (employeeEmail) {
-      console.log('Filtrando eventos por funcionário:', employeeEmail);
-      events = events.filter((event: any) => 
-        event.attendees?.some((attendee: any) => attendee.email === employeeEmail) ||
-        event.summary?.toLowerCase().includes(employeeEmail.toLowerCase())
-      );
-    }
-
-    // Converter para o formato esperado
-    const calendarEvents: CalendarEvent[] = events.map((event: any) => ({
-      id: event.id,
-      summary: event.summary || '',
-      start: {
-        dateTime: event.start.dateTime || event.start.date || '',
-        date: event.start.date
-      },
-      end: {
-        dateTime: event.end.dateTime || event.end.date || '',
-        date: event.end.date
-      },
-      attendees: event.attendees || []
-    }));
-
-    console.log('Eventos processados:', calendarEvents);
-    return calendarEvents;
+    // Com API key, não conseguimos acessar calendários privados
+    // Retornamos lista vazia para não bloquear horários incorretamente
+    return [];
   } catch (error) {
     console.error('Erro ao buscar eventos do Google Calendar:', error);
     return [];
@@ -133,6 +92,7 @@ const listEvents = async (date: string, employeeEmail?: string): Promise<Calenda
 };
 
 // Criar evento no calendário
+// NOTA: Com API key, não é possível criar eventos - requer OAuth2
 const createEvent = async (eventData: {
   summary: string;
   description: string;
@@ -141,45 +101,12 @@ const createEvent = async (eventData: {
   attendeeEmail?: string;
 }): Promise<CalendarEvent | null> => {
   try {
-    console.log('Criando evento no Google Calendar:', eventData);
-    await initializeGoogleCalendar();
-
-    const event = {
-      summary: eventData.summary,
-      description: eventData.description,
-      start: {
-        dateTime: eventData.start,
-        timeZone: 'America/Sao_Paulo',
-      },
-      end: {
-        dateTime: eventData.end,
-        timeZone: 'America/Sao_Paulo',
-      },
-      attendees: eventData.attendeeEmail ? [
-        { email: eventData.attendeeEmail }
-      ] : [],
-    };
-
-    console.log('Dados do evento para criar:', event);
-    const response = await window.gapi.client.calendar.events.insert({
-      calendarId: CALENDAR_ID,
-      resource: event,
-    });
-
-    console.log('Evento criado com sucesso:', response);
-    return {
-      id: response.result.id,
-      summary: response.result.summary || '',
-      start: {
-        dateTime: response.result.start.dateTime || response.result.start.date || '',
-        date: response.result.start.date
-      },
-      end: {
-        dateTime: response.result.end.dateTime || response.result.end.date || '',
-        date: response.result.end.date
-      },
-      attendees: response.result.attendees || []
-    };
+    console.log('Google Calendar: Criação de eventos requer OAuth2 - não disponível com API key');
+    console.log('Evento que seria criado:', eventData);
+    
+    // Com API key, não conseguimos criar eventos
+    // A funcionalidade continua funcionando localmente
+    return null;
   } catch (error) {
     console.error('Erro ao criar evento no Google Calendar:', error);
     return null;
