@@ -8,6 +8,8 @@ declare global {
           apiKey: string;
           discoveryDocs: string[];
         }) => Promise<void>;
+        getToken: () => { access_token: string } | null;
+        setToken: (token: string) => void;
         calendar: {
           calendarList: {
             list: () => Promise<{
@@ -53,6 +55,21 @@ declare global {
               result: any;
             }>;
           };
+        };
+      };
+    };
+    google: {
+      accounts: {
+        oauth2: {
+          initTokenClient: (config: {
+            client_id: string;
+            scope: string;
+            callback: (response: any) => void;
+          }) => {
+            callback: (response: any) => void;
+            requestAccessToken: (options?: { prompt?: string }) => void;
+          };
+          revoke: (token: string, callback: () => void) => void;
         };
       };
     };

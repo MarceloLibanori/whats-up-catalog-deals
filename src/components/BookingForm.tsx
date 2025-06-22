@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +8,7 @@ import { toast } from '@/components/ui/use-toast';
 import ServiceSelector from './ServiceSelector';
 import EmployeeSelector from './EmployeeSelector';
 import DateTimeSelector from './DateTimeSelector';
+import GoogleAuthButton from './GoogleAuthButton';
 import { useBooking } from '@/hooks/useBooking';
 import { getServiceById } from '@/data/services';
 import { getEmployeeById } from '@/data/employees';
@@ -95,51 +95,13 @@ const BookingForm: React.FC = () => {
     }
   };
 
-  const handleSubmit = async () => {
-    try {
-      const booking = await createBooking(formData);
-      const whatsappMessage = generateWhatsAppMessage(booking);
-
-      // Abrir WhatsApp
-      const phoneNumber = "5511947537240";
-      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${whatsappMessage}`;
-      window.open(whatsappUrl, '_blank');
-
-      // Abrir Google Calendar após um pequeno delay
-      setTimeout(() => {
-        openGoogleCalendar(booking);
-      }, 1000);
-
-      toast({
-        title: "Agendamento criado!",
-        description: "Seu agendamento foi enviado via WhatsApp e você pode adicionar ao Google Calendar.",
-      });
-
-      // Reset form
-      setFormData({
-        clientName: '',
-        clientPhone: '',
-        serviceId: '',
-        employeeId: '',
-        date: '',
-        time: '',
-        notes: ''
-      });
-      setSelectedDate(undefined);
-      setAvailableSlots([]);
-      setStep(1);
-
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: error instanceof Error ? error.message : "Não foi possível criar o agendamento. Tente novamente.",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {/* Google Calendar Auth Button */}
+      <div className="flex justify-center">
+        <GoogleAuthButton />
+      </div>
+
       {/* Progress indicator */}
       <div className="flex items-center justify-center space-x-4 mb-8">
         {[1, 2, 3, 4].map((stepNumber) => (
@@ -173,7 +135,14 @@ const BookingForm: React.FC = () => {
           {step === 1 && (
             <ServiceSelector
               selectedServiceId={formData.serviceId}
-              onServiceSelect={handleServiceSelect}
+              onServiceSelect={(serviceId) => {
+                setFormData(prev => ({ 
+                  ...prev, 
+                  serviceId,
+                  employeeId: '', 
+                  time: '' 
+                }));
+              }}
             />
           )}
 
@@ -181,7 +150,13 @@ const BookingForm: React.FC = () => {
             <EmployeeSelector
               selectedService={selectedService}
               selectedEmployeeId={formData.employeeId}
-              onEmployeeSelect={handleEmployeeSelect}
+              onEmployeeSelect={(employeeId) => {
+                setFormData(prev => ({ 
+                  ...prev, 
+                  employeeId,
+                  time: '' 
+                }));
+              }}
             />
           )}
 
@@ -206,8 +181,19 @@ const BookingForm: React.FC = () => {
                 selectedDate={selectedDate}
                 selectedTime={formData.time}
                 availableSlots={availableSlots}
-                onDateSelect={handleDateSelect}
-                onTimeSelect={handleTimeSelect}
+                onDateSelect={(date) => {
+                  setSelectedDate(date);
+                  if (date) {
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      date: date.toISOString().split('T')[0],
+                      time: '' 
+                    }));
+                  }
+                }}
+                onTimeSelect={(time) => {
+                  setFormData(prev => ({ ...prev, time }));
+                }}
               />
             </div>
           )}
@@ -223,7 +209,7 @@ const BookingForm: React.FC = () => {
                   <Input
                     id="clientName"
                     value={formData.clientName}
-                    onChange={(e) => handleInputChange('clientName', e.target.value)}
+                    onChange={(e) => setFormData(prev => ({ ...prev, clientName: e.target.value }))}
                     placeholder="Seu nome completo"
                     required
                   />
@@ -237,7 +223,7 @@ const BookingForm: React.FC = () => {
                   <Input
                     id="clientPhone"
                     value={formData.clientPhone}
-                    onChange={(e) => handleInputChange('clientPhone', e.target.value)}
+                    onChange={(e) => setFormData(prev => ({ ...prev, clientPhone: e.target.value }))}
                     placeholder="(11) 99999-9999"
                     required
                   />
@@ -249,7 +235,7 @@ const BookingForm: React.FC = () => {
                 <Textarea
                   id="notes"
                   value={formData.notes}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                   placeholder="Alguma observação especial..."
                   rows={3}
                 />
@@ -285,15 +271,56 @@ const BookingForm: React.FC = () => {
             {step < 4 ? (
               <Button
                 onClick={() => setStep(step + 1)}
-                disabled={!canProceedToNextStep()}
+                disabled={!((step === 1 && formData.serviceId) || 
+                           (step === 2 && formData.employeeId) || 
+                           (step === 3 && formData.date && formData.time) || 
+                           (step === 4 && formData.clientName && formData.clientPhone))}
                 className="bg-pink-600 hover:bg-pink-700"
               >
                 Próximo
               </Button>
             ) : (
               <Button
-                onClick={handleSubmit}
-                disabled={!canProceedToNextStep()}
+                onClick={async () => {
+                  try {
+                    const booking = await createBooking(formData);
+                    const whatsappMessage = generateWhatsAppMessage(booking);
+
+                    const phoneNumber = "5511947537240";
+                    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${whatsappMessage}`;
+                    window.open(whatsappUrl, '_blank');
+
+                    setTimeout(() => {
+                      openGoogleCalendar(booking);
+                    }, 1000);
+
+                    toast({
+                      title: "Agendamento criado!",
+                      description: "Seu agendamento foi enviado via WhatsApp e você pode adicionar ao Google Calendar.",
+                    });
+
+                    setFormData({
+                      clientName: '',
+                      clientPhone: '',
+                      serviceId: '',
+                      employeeId: '',
+                      date: '',
+                      time: '',
+                      notes: ''
+                    });
+                    setSelectedDate(undefined);
+                    setAvailableSlots([]);
+                    setStep(1);
+
+                  } catch (error) {
+                    toast({
+                      title: "Erro",
+                      description: error instanceof Error ? error.message : "Não foi possível criar o agendamento. Tente novamente.",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                disabled={!(formData.clientName && formData.clientPhone)}
                 className="bg-pink-600 hover:bg-pink-700"
               >
                 <MessageCircle className="w-4 h-4 mr-2" />
