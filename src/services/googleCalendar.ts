@@ -1,6 +1,7 @@
 
 // Configurações do Google Calendar API
 const CALENDAR_ID = 'primary'; // Use o ID do calendário do salão
+const GOOGLE_API_KEY = 'AIzaSyBq_pcu_fh2r9gN0M5SIP-ArAoqubAZiPs'; // Sua chave da API
 
 interface CalendarEvent {
   id: string;
@@ -57,14 +58,14 @@ const loadGoogleAPI = (): Promise<any> => {
   });
 };
 
-// Inicializar Google Calendar API
-const initializeGoogleCalendar = async (apiKey: string): Promise<void> => {
+// Inicializar Google Calendar API com chave fixa
+const initializeGoogleCalendar = async (): Promise<void> => {
   try {
-    console.log('Inicializando Google Calendar API...');
+    console.log('Inicializando Google Calendar API com chave fixa...');
     const gapi = await loadGoogleAPI();
     
     await gapi.client.init({
-      apiKey: apiKey,
+      apiKey: GOOGLE_API_KEY,
       discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
     });
     
@@ -78,14 +79,8 @@ const initializeGoogleCalendar = async (apiKey: string): Promise<void> => {
 // Listar eventos do calendário para uma data específica
 const listEvents = async (date: string, employeeEmail?: string): Promise<CalendarEvent[]> => {
   try {
-    const apiKey = localStorage.getItem('google-calendar-api-key');
-    if (!apiKey) {
-      console.log('Google Calendar API key não configurada');
-      return [];
-    }
-
     console.log('Buscando eventos do Google Calendar para:', date);
-    await initializeGoogleCalendar(apiKey);
+    await initializeGoogleCalendar();
 
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
@@ -146,14 +141,8 @@ const createEvent = async (eventData: {
   attendeeEmail?: string;
 }): Promise<CalendarEvent | null> => {
   try {
-    const apiKey = localStorage.getItem('google-calendar-api-key');
-    if (!apiKey) {
-      console.log('Google Calendar API key não configurada');
-      return null;
-    }
-
     console.log('Criando evento no Google Calendar:', eventData);
-    await initializeGoogleCalendar(apiKey);
+    await initializeGoogleCalendar();
 
     const event = {
       summary: eventData.summary,

@@ -39,14 +39,14 @@ const GoogleCalendarSettings = () => {
       const script = document.createElement('script');
       script.src = 'https://apis.google.com/js/api.js';
       
-      await new Promise((resolve, reject) => {
-        script.onload = resolve;
-        script.onerror = reject;
+      await new Promise<void>((resolve, reject) => {
+        script.onload = () => resolve();
+        script.onerror = () => reject();
         document.head.appendChild(script);
       });
 
-      await new Promise((resolve) => {
-        window.gapi.load('client', resolve);
+      await new Promise<void>((resolve) => {
+        window.gapi.load('client', () => resolve());
       });
 
       await window.gapi.client.init({
