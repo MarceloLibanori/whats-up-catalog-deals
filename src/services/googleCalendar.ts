@@ -34,30 +34,45 @@ interface GoogleCalendarService {
 const loadGoogleAPI = (): Promise<any> => {
   return new Promise((resolve, reject) => {
     if (window.gapi) {
+      console.log('Google API já carregada');
       resolve(window.gapi);
       return;
     }
 
+    console.log('Carregando Google API...');
     const script = document.createElement('script');
     script.src = 'https://apis.google.com/js/api.js';
     script.onload = () => {
+      console.log('Script do Google API carregado');
       window.gapi.load('client', () => {
+        console.log('Cliente Google API inicializado');
         resolve(window.gapi);
       });
     };
-    script.onerror = reject;
+    script.onerror = (error) => {
+      console.error('Erro ao carregar script do Google API:', error);
+      reject(error);
+    };
     document.head.appendChild(script);
   });
 };
 
 // Inicializar Google Calendar API
 const initializeGoogleCalendar = async (apiKey: string): Promise<void> => {
-  const gapi = await loadGoogleAPI();
-  
-  await gapi.client.init({
-    apiKey: apiKey,
-    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
-  });
+  try {
+    console.log('Inicializando Google Calendar API...');
+    const gapi = await loadGoogleAPI();
+    
+    await gapi.client.init({
+      apiKey: apiKey,
+      discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+    });
+    
+    console.log('Google Calendar API inicializada com sucesso');
+  } catch (error) {
+    console.error('Erro ao inicializar Google Calendar API:', error);
+    throw error;
+  }
 };
 
 // Listar eventos do calendário para uma data específica
@@ -65,10 +80,11 @@ const listEvents = async (date: string, employeeEmail?: string): Promise<Calenda
   try {
     const apiKey = localStorage.getItem('google-calendar-api-key');
     if (!apiKey) {
-      console.log('Google Calendar API key not configured');
+      console.log('Google Calendar API key não configurada');
       return [];
     }
 
+    console.log('Buscando eventos do Google Calendar para:', date);
     await initializeGoogleCalendar(apiKey);
 
     const startOfDay = new Date(date);
@@ -77,6 +93,7 @@ const listEvents = async (date: string, employeeEmail?: string): Promise<Calenda
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
+    console.log('Fazendo requisição para Google Calendar...');
     const response = await window.gapi.client.calendar.events.list({
       calendarId: CALENDAR_ID,
       timeMin: startOfDay.toISOString(),
@@ -85,10 +102,12 @@ const listEvents = async (date: string, employeeEmail?: string): Promise<Calenda
       orderBy: 'startTime',
     });
 
+    console.log('Resposta do Google Calendar:', response);
     let events = response.result.items || [];
 
     // Filtrar por funcionário se especificado
     if (employeeEmail) {
+      console.log('Filtrando eventos por funcionário:', employeeEmail);
       events = events.filter((event: any) => 
         event.attendees?.some((attendee: any) => attendee.email === employeeEmail) ||
         event.summary?.toLowerCase().includes(employeeEmail.toLowerCase())
@@ -110,9 +129,10 @@ const listEvents = async (date: string, employeeEmail?: string): Promise<Calenda
       attendees: event.attendees || []
     }));
 
+    console.log('Eventos processados:', calendarEvents);
     return calendarEvents;
   } catch (error) {
-    console.error('Error fetching Google Calendar events:', error);
+    console.error('Erro ao buscar eventos do Google Calendar:', error);
     return [];
   }
 };
@@ -128,10 +148,11 @@ const createEvent = async (eventData: {
   try {
     const apiKey = localStorage.getItem('google-calendar-api-key');
     if (!apiKey) {
-      console.log('Google Calendar API key not configured');
+      console.log('Google Calendar API key não configurada');
       return null;
     }
 
+    console.log('Criando evento no Google Calendar:', eventData);
     await initializeGoogleCalendar(apiKey);
 
     const event = {
@@ -150,11 +171,13 @@ const createEvent = async (eventData: {
       ] : [],
     };
 
+    console.log('Dados do evento para criar:', event);
     const response = await window.gapi.client.calendar.events.insert({
       calendarId: CALENDAR_ID,
       resource: event,
     });
 
+    console.log('Evento criado com sucesso:', response);
     return {
       id: response.result.id,
       summary: response.result.summary || '',
@@ -169,7 +192,7 @@ const createEvent = async (eventData: {
       attendees: response.result.attendees || []
     };
   } catch (error) {
-    console.error('Error creating Google Calendar event:', error);
+    console.error('Erro ao criar evento no Google Calendar:', error);
     return null;
   }
 };
