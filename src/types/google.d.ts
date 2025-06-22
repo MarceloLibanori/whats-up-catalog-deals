@@ -9,6 +9,16 @@ declare global {
           discoveryDocs: string[];
         }) => Promise<void>;
         calendar: {
+          calendarList: {
+            list: () => Promise<{
+              result: {
+                items: Array<{
+                  id: string;
+                  summary: string;
+                }>;
+              };
+            }>;
+          };
           events: {
             list: (params: {
               calendarId: string;

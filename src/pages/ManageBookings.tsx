@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import BookingManager from '@/components/BookingManager';
 import AdminLogin from '@/components/AdminLogin';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Settings, Scissors, Sparkles, LogOut } from 'lucide-react';
+import { ArrowLeft, Settings, Scissors, Sparkles, LogOut, Calendar } from 'lucide-react';
 
 const ManageBookings = () => {
   const { isAdmin, logout } = useAuth();
@@ -34,6 +34,12 @@ const ManageBookings = () => {
               </div>
             </div>
             <div className="flex items-center gap-4">
+              <Link to="/google-calendar-settings">
+                <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Google Calendar
+                </Button>
+              </Link>
               <div className="flex items-center gap-2">
                 <Scissors className="w-6 h-6" />
                 <span className="text-lg font-semibold">Salão Bella</span>
